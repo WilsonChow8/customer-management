@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>客户管理系统</title>
+<style>
+/* ===== 基础 ===== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif;background:#f0f2f5;color:#222;min-height:100vh;}
+
+/* ===== 顶部栏 ===== */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:200;background:linear-gradient(135deg,#1a73e8,#0d47a1);
+  color:white;height:54px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+.topbar h1{font-size:18px;font-weight:700;letter-spacing:1px;}
+.topbar .time{font-size:12px;opacity:.85;}
+
+/* ===== 侧边栏（桌面）===== */
+.sidebar{position:fixed;top:54px;left:0;bottom:0;width:200px;background:white;
+  border-right:1px solid #eee;box-shadow:1px 0 4px rgba(0,0,0,0.05);z-index:100;
+  display:flex;flex-direction:column;padding:12px 0;}
+.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;
+  cursor:pointer;color:#666;font-size:14px;font-weight:500;transition:all .2s;
+  border-left:3px solid transparent;}
+.sidebar .nav-item:hover{background:#f5f8ff;color:#1a73e8;}
+.sidebar .nav-item.active{background:#e8f0fe;color:#1a73e8;border-left-color:#1a73e8;font-weight:700;}
+.sidebar .nav-icon{font-size:18px;}
+
+/* ===== 底部导航（手机）===== */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:white;box-shadow:0 -1px 8px rgba(0,0,0,0.1);border-top:1px solid #eee;}
+.bottom-nav .nav-item{flex:1;text-align:center;padding:10px 0 8px;cursor:pointer;
+  color:#aaa;transition:color .2s;}
+.bottom-nav .nav-item.active{color:#1a73e8;}
+.bottom-nav .nav-item .nav-icon{font-size:20px;}
+.bottom-nav .nav-item .nav-label{font-size:11px;margin-top:2px;}
+
+/* ===== 主内容区 ===== */
+.main{margin-left:200px;padding:70px 24px 24px;min-height:100vh;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* ===== FAB ===== */
+.fab{display:none;position:fixed;right:20px;bottom:76px;z-index:150;
+  width:52px;height:52px;border-radius:50%;background:#1a73e8;color:white;
+  font-size:28px;border:none;box-shadow:0 4px 12px rgba(26,115,232,.4);
+  cursor:pointer;align-items:center;justify-content:center;}
+
+/* ===== 统计卡片 ===== */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+.stat-card{background:white;border-radius:12px;padding:18px 20px;
+  box-shadow:0 1px 6px rgba(0,0,0,.07);border-left:4px solid #1a73e8;}
+.stat-card.green{border-color:#34a853;}.stat-card.orange{border-color:#fbbc04;}
+.stat-card.red{border-color:#ea4335;}.stat-card.purple{border-color:#9c27b0;}
+.stat-card .label{font-size:12px;color:#888;margin-bottom:5px;}
+.stat-card .value{font-size:30px;font-weight:800;color:#1a73e8;}
+.stat-card.green .value{color:#34a853;}.stat-card.orange .value{color:#fbbc04;}
+.stat-card.red .value{color:#ea4335;}.stat-card.purple .value{color:#9c27b0;}
+
+/* ===== 图表卡片 ===== */
+.chart-card{background:white;border-radius:12px;padding:18px;
+  box-shadow:0 1px 6px rgba(0,0,0,.07);margin-bottom:14px;}
+.chart-card h3{font-size:14px;color:#444;margin-bottom:12px;font-weight:700;}
+.home-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.bar-label{width:72px;font-size:12px;color:#555;text-align:right;flex-shrink:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-bg{flex:1;background:#f0f2f5;border-radius:4px;height:15px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s;}
+.bar-num{font-size:12px;color:#333;width:36px;flex-shrink:0;}
+
+/* ===== 跟进提醒 ===== */
+.followup-item{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 0;border-bottom:1px solid #f5f5f5;}
+.followup-item:last-child{border-bottom:none;}
+.followup-name{font-size:14px;font-weight:700;}
+.followup-sub{font-size:12px;color:#888;margin-top:2px;}
+.fu-btn{padding:5px 13px;border:none;border-radius:8px;background:#1a73e8;
+  color:white;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.fu-btn.done{background:#34a853;}
+.empty{text-align:center;color:#bbb;padding:20px 0;font-size:13px;}
+
+/* ===== 工具栏 ===== */
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.toolbar input,.toolbar select{padding:8px 12px;border:1px solid #ddd;border-radius:8px;
+  font-size:13px;outline:none;background:white;}
+.toolbar input{flex:1;min-width:160px;}
+.toolbar input:focus,.toolbar select:focus{border-color:#1a73e8;}
+.btn{padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:13px;
+  font-weight:600;transition:opacity .2s;white-space:nowrap;}
+.btn:hover{opacity:.85;}
+.btn-primary{background:#1a73e8;color:white;}
+.btn-success{background:#34a853;color:white;}
+.btn-danger{background:#ea4335;color:white;}
+.btn-sm{padding:4px 11px;font-size:12px;font-weight:normal;}
+
+/* ===== 表格（桌面）===== */
+.table-wrap{background:white;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.07);overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:#1a73e8;color:white;}
+thead th{padding:11px 12px;text-align:left;font-weight:600;white-space:nowrap;}
+thead th.sort{cursor:pointer;user-select:none;}
+thead th.sort:hover{background:#1565c0;}
+tbody tr{border-bottom:1px solid #f0f0f0;transition:background .15s;}
+tbody tr:hover{background:#e8f0fe;}
+tbody td{padding:9px 12px;}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.tag-vip{background:#fce8e6;color:#d93025;}
+.tag-normal{background:#e6f4ea;color:#137333;}
+.tag-new{background:#e8f0fe;color:#1a73e8;}
+.tag-sleep{background:#f1f3f4;color:#888;}
+.tag-domestic{background:#e8f0fe;color:#1a73e8;}
+.tag-intl{background:#fce8e6;color:#d93025;}
+.tag-region{background:#e6f4ea;color:#137333;}
+.actions{display:flex;gap:5px;}
+
+/* ===== 客户卡片（手机）===== */
+.cust-list{display:flex;flex-direction:column;gap:10px;}
+.cust-card{background:white;border-radius:12px;padding:14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);position:relative;overflow:hidden;}
+.cust-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:#1a73e8;}
+.cust-card.domestic::before{background:#1a73e8;}
+.cust-card.intl::before{background:#ea4335;}
+.cust-card.region::before{background:#34a853;}
+.cust-card.vip::before{background:#d93025;}
+.cust-card.sleep::before{background:#aaa;}
+.cust-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.cust-name{font-size:15px;font-weight:700;}
+.cust-info{font-size:13px;color:#666;line-height:1.8;}
+.cust-amount{font-size:14px;font-weight:700;color:#1a73e8;margin-top:5px;}
+.cust-btns{display:flex;gap:8px;margin-top:9px;}
+.cust-btns .btn-sm{flex:1;padding:7px 0;text-align:center;}
+
+/* ===== 分页 ===== */
+.pagination{display:flex;gap:5px;align-items:center;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;}
+.pg-btn{padding:5px 11px;border:1px solid #ddd;border-radius:6px;background:white;
+  cursor:pointer;font-size:13px;}
+.pg-btn.active{background:#1a73e8;color:white;border-color:#1a73e8;}
+.pg-btn:disabled{opacity:.4;cursor:not-allowed;}
+.pg-info{font-size:13px;color:#888;margin:0 6px;}
+
+/* ===== 弹窗 ===== */
+.modal-bg{display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.45);align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:white;border-radius:16px;padding:26px;width:560px;max-width:96vw;
+  max-height:92vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);
+  animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.modal h2{font-size:17px;color:#1a73e8;margin-bottom:18px;font-weight:700;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid .full{grid-column:1/-1;}
+.form-row label{display:block;font-size:12px;color:#888;margin-bottom:4px;}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 11px;
+  border:1px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;background:#fafafa;}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:#1a73e8;background:white;}
+.form-row textarea{height:64px;resize:none;}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+.btn-cancel-m{padding:9px 20px;border:1px solid #ddd;border-radius:8px;
+  background:white;color:#555;font-size:14px;cursor:pointer;}
+.btn-save-m{padding:9px 26px;border:none;border-radius:8px;
+  background:#1a73e8;color:white;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* ===== 详情弹窗 ===== */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;}
+.detail-row{display:flex;padding:9px 0;border-bottom:1px solid #f5f5f5;}
+.detail-row.full{grid-column:1/-1;}
+.detail-row .dk{width:80px;font-size:13px;color:#888;flex-shrink:0;}
+.detail-row .dv{font-size:14px;color:#333;flex:1;word-break:break-all;}
+
+/* ===== 统计分析 ===== */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* ===== 响应式：手机 ===== */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .bottom-nav{display:flex;}
+  .fab{display:flex;}
+  .main{margin-left:0;padding:68px 12px 74px;}
+  .stat-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .stat-card .value{font-size:26px;}
+  .home-row{grid-template-columns:1fr;}
+  .table-wrap{display:none;}
+  .cust-list{display:flex;}
+  .toolbar input{min-width:100%;width:100%;}
+  .stats-grid{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-grid .full{grid-column:1/-1;}
+  .detail-grid{grid-template-columns:1fr;}
+  .detail-row.full{grid-column:1/-1;}
+  .modal{border-radius:20px 20px 0 0;position:fixed;bottom:0;left:0;right:0;
+    width:100%;max-width:100%;border-radius:20px 20px 0 0;}
+  .modal-bg{align-items:flex-end;}
+}
+/* ===== 响应式：桌面隐藏手机卡片 ===== */
+@media(min-width:769px){
+  .cust-list{display:none;}
+  .table-wrap{display:block;}
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部栏 -->
+<div class="topbar">
+  <h1>📊 客户管理系统</h1>
+  <span class="time" id="clock"></span>
+</div>
+
+<!-- 侧边栏（桌面） -->
+<div class="sidebar">
+  <div class="nav-item active" onclick="switchPage('home',this,'side')"><span class="nav-icon">🏠</span> 首页概览</div>
+  <div class="nav-item" onclick="switchPage('list',this,'side')"><span class="nav-icon">👥</span> 客户列表</div>
+  <div class="nav-item" onclick="switchPage('stats',this,'side')"><span class="nav-icon">📊</span> 统计分析</div>
+</div>
+
+<!-- 底部导航（手机） -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchPage('home',this,'bottom')">
+    <div class="nav-icon">🏠</div><div class="nav-label">首页</div>
+  </div>
+  <div class="nav-item" onclick="switchPage('list',this,'bottom')">
+    <div class="nav-icon">👥</div><div class="nav-label">客户</div>
+  </div>
+  <div class="nav-item" onclick="switchPage('stats',this,'bottom')">
+    <div class="nav-icon">📊</div><div class="nav-label">分析</div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="openAdd()" style="display:none">+</button>
+
+<!-- 主内容 -->
+<div class="main">
+
+  <!-- 首页 -->
+  <div class="page active" id="page-home">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">总客户数</div><div class="value" id="s-total">0</div></div>
+      <div class="stat-card green"><div class="label">国际/区域客户</div><div class="value" id="s-intl">0</div></div>
+      <div class="stat-card orange"><div class="label">今日待跟进</div><div class="value" id="s-today">0</div></div>
+      <div class="stat-card red"><div class="label">逾期未跟进</div><div class="value" id="s-overdue">0</div></div>
+    </div>
+    <div class="home-row">
+      <div class="chart-card">
+        <h3>🔔 今日待跟进</h3>
+        <div id="today-followup"><div class="empty">暂无今日跟进计划</div></div>
+      </div>
+      <div class="chart-card">
+        <h3>📋 昨日已跟进</h3>
+        <div id="yesterday-contact"><div class="empty">昨日无跟进记录</div></div>
+      </div>
+    </div>
+    <div class="home-row">
+      <div class="chart-card"><h3>📈 客户类型分布</h3><div id="type-chart"></div></div>
+      <div class="chart-card"><h3>🗺️ 地区分布 TOP 8</h3><div id="region-chart"></div></div>
+    </div>
+  </div>
+
+  <!-- 客户列表 -->
+  <div class="page" id="page-list">
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="🔍 搜索姓名 / 电话 / 公司 / 意向产品..." oninput="onSearch()">
+      <select id="filter-type" onchange="resetPage();renderList();">
+        <option value="">全部类型</option>
+        <option>国内客户</option><option>国际客户</option><option>区域客户</option>
+        <option>VIP</option><option>普通</option><option>新客户</option><option>沉睡</option>
+      </select>
+      <select id="filter-region" onchange="resetPage();renderList();">
+        <option value="">全部地区</option>
+      </select>
+      <select id="filter-followup" onchange="resetPage();renderList();">
+        <option value="">全部跟进状态</option>
+        <option value="today">今日待跟进</option>
+        <option value="overdue">逾期未跟进</option>
+        <option value="none">未设跟进日期</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAdd()">+ 新增客户</button>
+      <button class="btn btn-success" onclick="exportCSV()">⬇ 导出 CSV</button>
+    </div>
+
+    <!-- 桌面表格 -->
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th>
+          <th class="sort" onclick="sortBy('name')">姓名 ↕</th>
+          <th>公司</th><th>电话</th><th>地区</th><th>类型</th>
+          <th>意向产品</th>
+          <th class="sort" onclick="sortBy('amount')">消费额 ↕</th>
+          <th class="sort" onclick="sortBy('date')">最近联系 ↕</th>
+          <th class="sort" onclick="sortBy('followup')">下次跟进 ↕</th>
+          <th>操作</th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- 手机卡片 -->
+    <div class="cust-list" id="cust-list"></div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- 统计分析 -->
+  <div class="page" id="page-stats">
+    <div class="stats-grid">
+      <div class="chart-card"><h3>💰 消费额 TOP 10</h3><div id="amount-chart"></div></div>
+      <div class="chart-card"><h3>📅 最近联系时间分布</h3><div id="date-chart"></div></div>
+      <div class="chart-card"><h3>📊 客户类型占比</h3><div id="pie-chart"></div></div>
+      <div class="chart-card"><h3>🌍 完整地区分布</h3><div id="full-region-chart"></div></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- 新增/编辑弹窗 -->
+<div class="modal-bg" id="modal-form">
+  <div class="modal">
+    <h2 id="modal-title">新增客户</h2>
+    <div class="form-grid">
+      <div class="form-row"><label>姓名 *</label><input id="f-name" placeholder="客户姓名"></div>
+      <div class="form-row"><label>公司</label><input id="f-company" placeholder="所属公司"></div>
+      <div class="form-row"><label>电话</label><input id="f-phone" type="tel" placeholder="联系电话"></div>
+      <div class="form-row"><label>邮箱</label><input id="f-email" type="email" placeholder="电子邮箱"></div>
+      <div class="form-row"><label>地区</label><input id="f-region" placeholder="如：北京、加拿大"></div>
+      <div class="form-row"><label>类型</label>
+        <select id="f-type">
+          <option>国内客户</option><option>国际客户</option><option>区域客户</option>
+          <option>VIP</option><option>普通</option><option>新客户</option><option>沉睡</option>
+        </select>
+      </div>
+      <div class="form-row"><label>消费额(¥)</label><input id="f-amount" type="number" placeholder="0"></div>
+      <div class="form-row"><label>意向产品</label><input id="f-product" placeholder="如：智能门锁、灯控系统..."></div>
+      <div class="form-row"><label>最近联系</label><input id="f-date" type="date"></div>
+      <div class="form-row"><label>下次跟进日期</label><input id="f-followup" type="date"></div>
+      <div class="form-row full"><label>备注</label><textarea id="f-note" placeholder="备注信息..."></textarea></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel-m" onclick="closeForm()">取消</button>
+      <button class="btn-save-m" onclick="saveCustomer()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-bg" id="modal-detail">
+  <div class="modal">
+    <h2 id="detail-name">客户详情</h2>
+    <div class="detail-grid" id="detail-body"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel-m" onclick="closeDetail()">关闭</button>
+      <button class="btn-save-m" id="detail-edit-btn">编辑</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 数据 =====
+let customers = [{"id": 1, "name": "6.19", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 2, "name": "世寰智能", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 3, "name": "东莞杨总", "company": "", "phone": "", "email": "", "region": "东莞", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 4, "name": "严斌", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 5, "name": "中建科工", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 6, "name": "亚凯", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 7, "name": "从化 石门", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 8, "name": "从化 马总报价", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 9, "name": "伟程", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 10, "name": "伯克希尔   梅勇", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 11, "name": "何 攀枝花", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 12, "name": "何嘉杰", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 13, "name": "何学伟", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 14, "name": "何总 悉尼", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 15, "name": "佛山市易恒科技有限公司", "company": "", "phone": "", "email": "", "region": "佛山", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 16, "name": "俞果", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 17, "name": "信天游", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 18, "name": "傅志江", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 19, "name": "刘", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 20, "name": "刘小姐", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 21, "name": "刘文标", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 22, "name": "刘梅", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 23, "name": "刘波", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 24, "name": "刘钊", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 25, "name": "加洲吴总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 26, "name": "北滘", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 27, "name": "华艺", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 28, "name": "原原", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 29, "name": "台灣阿兩", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 30, "name": "向云灯", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 31, "name": "向阳", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 32, "name": "吕世伟", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 33, "name": "吴凯", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 34, "name": "吴舤", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 35, "name": "周俊宇", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 36, "name": "周俊宇客户", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 37, "name": "周坚", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 38, "name": "周小华 家具定制", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 39, "name": "周总 翰仕", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 40, "name": "周新明", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 41, "name": "周春燕", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 42, "name": "周荣才客户", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 43, "name": "唐茂盛 山西太原 人祖山", "company": "", "phone": "", "email": "", "region": "山西", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 44, "name": "国才", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 45, "name": "土尔其", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 46, "name": "坚朗", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 47, "name": "坚朗 张竣深", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 48, "name": "城步惠玩旅游夹", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 49, "name": "基", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 50, "name": "夏祥", "company": "", "phone": "13388930625", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 51, "name": "大宝", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 52, "name": "孙一典", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 53, "name": "孙善国", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 54, "name": "宁波朱小姐", "company": "", "phone": "", "email": "", "region": "宁波", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 55, "name": "安恪勒", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 56, "name": "宋智龙", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 57, "name": "小何", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 58, "name": "小杨", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 59, "name": "尚诚", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 60, "name": "居间协议", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 61, "name": "山东李小姐", "company": "", "phone": "", "email": "", "region": "山东", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 62, "name": "巴塞罗那 王总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 63, "name": "广昌隆", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 64, "name": "库存", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 65, "name": "张书乐", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 66, "name": "张桂红", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 67, "name": "张桌然", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 68, "name": "张铁军", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 69, "name": "張华英", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 70, "name": "徐宾", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 71, "name": "徐英", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 72, "name": "德国李总报价", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 73, "name": "新屋 深圳", "company": "", "phone": "", "email": "", "region": "深圳", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 74, "name": "方迪俭", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 75, "name": "晨阳", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 76, "name": "普翔电子 蔡总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 77, "name": "智能厕所", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 78, "name": "曾长江", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 79, "name": "朱振军", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 80, "name": "朱瑞寿", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 81, "name": "权记", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 82, "name": "李剑斌", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 83, "name": "李智林", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 84, "name": "李永昌", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 85, "name": "李金龙", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 86, "name": "李铁男", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 87, "name": "李青松", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 88, "name": "束总 广西防城港", "company": "", "phone": "", "email": "", "region": "广西", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 89, "name": "杨兴", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 90, "name": "杨军", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 91, "name": "杰西卡", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 92, "name": "林白", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 93, "name": "林黎明", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 94, "name": "梁伟森", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 95, "name": "梁炬发", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 96, "name": "水哥拍档介绍", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 97, "name": "汇联", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 98, "name": "江宇涛", "company": "", "phone": "13827766772", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 99, "name": "江门新会曾总", "company": "", "phone": "", "email": "", "region": "江门", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 100, "name": "河源刘姐", "company": "", "phone": "", "email": "", "region": "河源", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 101, "name": "海南宁波", "company": "", "phone": "", "email": "", "region": "宁波", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 102, "name": "海南康睿", "company": "", "phone": "", "email": "", "region": "海南", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 103, "name": "海南王总", "company": "", "phone": "", "email": "", "region": "海南", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 104, "name": "温州天美张琦", "company": "", "phone": "", "email": "", "region": "温州", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 105, "name": "湛江闯生", "company": "", "phone": "", "email": "", "region": "湛江", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 106, "name": "潘裕民", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 107, "name": "熊军", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 108, "name": "爱尔卡", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 109, "name": "王黎", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 110, "name": "环博于静瑶", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 111, "name": "珠海 赖总", "company": "", "phone": "", "email": "", "region": "珠海", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 112, "name": "白 外贸公司", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 113, "name": "百安门陈总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 114, "name": "知识城城李燕红", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 115, "name": "福瑞", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 116, "name": "秦芬翠", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 117, "name": "章建标", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 118, "name": "简", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 119, "name": "纬森", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 120, "name": "维也纳 叶总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 121, "name": "罗总 国才老友", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 122, "name": "罗生 福建", "company": "", "phone": "", "email": "", "region": "福建", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 123, "name": "翁照良", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 124, "name": "翟总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 125, "name": "老叶", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 126, "name": "芭比出口马尼拉", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 127, "name": "芳燕", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 128, "name": "苏总 陈村", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 129, "name": "荣", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 130, "name": "蒙总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 131, "name": "许瑞荣", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 132, "name": "谢抒怀", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 133, "name": "谢正庚", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 134, "name": "谢海", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 135, "name": "贺耀辉", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 136, "name": "速派", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 137, "name": "速派方总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 138, "name": "邓裕潮", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 139, "name": "邝总 大沥", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 140, "name": "郭女士", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 141, "name": "郭静", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 142, "name": "酷享铝业", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 143, "name": "金筷子酒店", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 144, "name": "钟海", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 145, "name": "闾总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 146, "name": "阳光海凌岛", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 147, "name": "阳江", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 148, "name": "阿羊家装修", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 149, "name": "阿雪", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 150, "name": "陈建利", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 151, "name": "陈德江", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 152, "name": "陈玲", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 153, "name": "陈鹏程", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 154, "name": "雨桥", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 155, "name": "静", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 156, "name": "韩国婆", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 157, "name": "韩国洪总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 158, "name": "韩国翻译", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 159, "name": "韩小姐", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 160, "name": "顺炎", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 161, "name": "飞自由", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 162, "name": "马春强", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 163, "name": "马来西亚 陈总", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 164, "name": "马来西亚父女", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 165, "name": "马玉婷", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 166, "name": "骏之达", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 167, "name": "高斯", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 168, "name": "魏成就", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 169, "name": "鹿鸣谷", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 170, "name": "黄顺德", "company": "", "phone": "", "email": "", "region": "国内", "type": "国内客户", "amount": 0, "date": "", "note": ""}, {"id": 171, "name": "Allen-新知", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 172, "name": "Angelina", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 173, "name": "Avdiu 法国佬", "company": "", "phone": "", "email": "", "region": "法国", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 174, "name": "BAO", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 175, "name": "BInGo", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 176, "name": "CAN", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 177, "name": "Daniela", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 178, "name": "David 温哥华", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 179, "name": "Elaine绮琳", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 180, "name": "Ethan", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 181, "name": "Foo Chew Yen", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 182, "name": "ISA 澳洲", "company": "", "phone": "", "email": "", "region": "澳洲", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 183, "name": "JOJO", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 184, "name": "JULIE LOH", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 185, "name": "Jade", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 186, "name": "Jane", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 187, "name": "Jason 印尼 万隆", "company": "", "phone": "", "email": "", "region": "印尼", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 188, "name": "LEO LA", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 189, "name": "LEO 加拿大", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 190, "name": "LVLY跟的泰国", "company": "", "phone": "", "email": "", "region": "泰国", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 191, "name": "La Alt", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 192, "name": "Luis 潘", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 193, "name": "M Daher", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 194, "name": "Michael Dai新西兰", "company": "", "phone": "", "email": "", "region": "新西兰", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 195, "name": "QiWang", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 196, "name": "Rob 荷兰", "company": "", "phone": "", "email": "", "region": "荷兰", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 197, "name": "STEVE 新西兰", "company": "", "phone": "", "email": "", "region": "新西兰", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 198, "name": "Snowing", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 199, "name": "W20 Alvin 台湾", "company": "", "phone": "", "email": "", "region": "台湾", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 200, "name": "W24 陈先生", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 201, "name": "W26 郑楚洲", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 202, "name": "WINNIE", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 203, "name": "Walson 美国", "company": "", "phone": "", "email": "", "region": "美国", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 204, "name": "ameer", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 205, "name": "bradchen", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 206, "name": "frink li", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 207, "name": "gulam waris", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 208, "name": "jack chen", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 209, "name": "jennifer美国", "company": "", "phone": "", "email": "", "region": "美国", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 210, "name": "john 法属", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 211, "name": "kennyeny", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 212, "name": "kobe", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 213, "name": "lin", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 214, "name": "nami 出口加拿大", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 215, "name": "olaf2023 FRANCE", "company": "", "phone": "", "email": "", "region": "法国", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 216, "name": "orporp", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 217, "name": "simon 新西兰", "company": "", "phone": "", "email": "", "region": "新西兰", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 218, "name": "spring", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 219, "name": "spring wu", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 220, "name": "standard health", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 221, "name": "sunnysun", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 222, "name": "titos", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 223, "name": "w98李大王", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 224, "name": "加州 lucy", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 225, "name": "新西兰Food", "company": "", "phone": "", "email": "", "region": "新西兰", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 226, "name": "江门SMC 赵总", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 227, "name": "澳洲Russell", "company": "", "phone": "", "email": "", "region": "澳洲", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 228, "name": "爱尔兰JJ", "company": "", "phone": "", "email": "", "region": "海外", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 229, "name": "美国 Lucy", "company": "", "phone": "", "email": "", "region": "美国", "type": "国际客户", "amount": 0, "date": "", "note": ""}, {"id": 230, "name": "保加利亚", "company": "", "phone": "", "email": "", "region": "保加利亚", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 231, "name": "何大伟 加拿大", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 232, "name": "何小姐 出口加拿大", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 233, "name": "加拿大 杨总", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 234, "name": "加拿大方舟国际", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 235, "name": "潘总 加拿大", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 236, "name": "蔡总 加拿大温哥华", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 237, "name": "赵壮志出口加拿大", "company": "", "phone": "", "email": "", "region": "加拿大", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 238, "name": "印尼", "company": "", "phone": "", "email": "", "region": "印尼", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 239, "name": "印尼韩总", "company": "", "phone": "", "email": "", "region": "印尼", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 240, "name": "台湾 壮总", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 241, "name": "台湾 李总", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 242, "name": "台湾 老刘", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 243, "name": "台湾刘总", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 244, "name": "台湾苏总", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 245, "name": "台湾陈总", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 246, "name": "嘉惠 台湾", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 247, "name": "林松茂 台湾", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 248, "name": "高小姐 出口台湾", "company": "", "phone": "", "email": "", "region": "台湾", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 249, "name": "奥地利", "company": "", "phone": "", "email": "", "region": "奥地利", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 250, "name": "张总 新西兰", "company": "", "phone": "", "email": "", "region": "新西兰", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 251, "name": "李总出口新西兰", "company": "", "phone": "", "email": "", "region": "新西兰", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 252, "name": "日本周总", "company": "", "phone": "", "email": "", "region": "日本", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 253, "name": "泰国中间商", "company": "", "phone": "", "email": "", "region": "泰国", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 254, "name": "泰国代理", "company": "", "phone": "", "email": "", "region": "泰国", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 255, "name": "泰国妹", "company": "", "phone": "", "email": "", "region": "泰国", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 256, "name": "澳洲 江门 袁生", "company": "", "phone": "", "email": "", "region": "澳洲", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 257, "name": "澳洲吴有祥", "company": "", "phone": "", "email": "", "region": "澳洲", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 258, "name": "澳洲悉尼宋涛", "company": "", "phone": "", "email": "", "region": "澳洲", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 259, "name": "贺总 出澳洲", "company": "", "phone": "", "email": "", "region": "澳洲", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 260, "name": "出口美国 做船 康总", "company": "", "phone": "", "email": "", "region": "美国", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 261, "name": "可乐 美国", "company": "", "phone": "", "email": "", "region": "美国", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 262, "name": "葡萄牙福寿", "company": "", "phone": "", "email": "", "region": "葡萄牙", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 263, "name": "钟声 越南", "company": "", "phone": "", "email": "", "region": "越南", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 264, "name": "姜总 迪拜", "company": "", "phone": "", "email": "", "region": "迪拜", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 265, "name": "迪拜", "company": "", "phone": "", "email": "", "region": "迪拜", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 266, "name": "周总 出口非洲", "company": "", "phone": "", "email": "", "region": "非洲", "type": "区域客户", "amount": 0, "date": "", "note": ""}, {"id": 267, "name": "出口香港潘总", "company": "", "phone": "", "email": "", "region": "香港", "type": "区域客户", "amount": 0, "date": "", "note": ""}];
+let nextId = 268;
+let editId = null;
+let sortKey = '';
+let sortDir = 1;
+let currentPage = 1;
+const PAGE_SIZE = 20;
+
+const tagClass = {
+  'VIP':'tag-vip','普通':'tag-normal','新客户':'tag-new','沉睡':'tag-sleep',
+  '国内客户':'tag-domestic','国际客户':'tag-intl','区域客户':'tag-region'
+};
+const cardClass = {
+  '国内客户':'domestic','国际客户':'intl','区域客户':'region','VIP':'vip','沉睡':'sleep'
+};
+
+// ===== 时钟 =====
+function tick(){ document.getElementById('clock').textContent = new Date().toLocaleString('zh-CN'); }
+setInterval(tick,1000); tick();
+
+// ===== 日期工具 =====
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function yestStr(){ const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10); }
+
+// ===== 页面切换 =====
+// side = 侧边栏点击  bottom = 底部导航点击
+function switchPage(name, el, from){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  // 同步两套导航高亮
+  document.querySelectorAll('.sidebar .nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav .nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  // 同步另一侧
+  const idx = [...el.parentElement.children].indexOf(el);
+  const otherNav = from==='side'
+    ? document.querySelector('.bottom-nav')
+    : document.querySelector('.sidebar');
+  if(otherNav) otherNav.children[idx] && otherNav.children[idx].classList.add('active');
+
+  document.getElementById('page-'+name).classList.add('active');
+  const isMobile = window.innerWidth<=768;
+  document.getElementById('fab').style.display = (name==='list'&&isMobile) ? 'flex' : 'none';
+  if(name==='home')  updateHome();
+  if(name==='list')  { updateRegionFilter(); renderList(); }
+  if(name==='stats') updateStats();
+}
+
+// ===== 首页 =====
+function updateHome(){
+  const today=todayStr(), yest=yestStr();
+  const todayList   = customers.filter(c=>c.followup===today);
+  const overdueList = customers.filter(c=>c.followup&&c.followup<today);
+  const intlCnt     = customers.filter(c=>c.type==='国际客户'||c.type==='区域客户').length;
+
+  document.getElementById('s-total').textContent   = customers.length;
+  document.getElementById('s-intl').textContent    = intlCnt;
+  document.getElementById('s-today').textContent   = todayList.length;
+  document.getElementById('s-overdue').textContent = overdueList.length;
+
+  // 今日待跟进
+  document.getElementById('today-followup').innerHTML = todayList.length
+    ? todayList.map(c=>`<div class="followup-item">
+        <div><div class="followup-name">${c.name}</div>
+        <div class="followup-sub">${c.product?'意向：'+c.product:''}${c.phone?' · '+c.phone:''}</div></div>
+        <button class="fu-btn" onclick="openEdit(${c.id})">去跟进</button></div>`).join('')
+    : '<div class="empty">暂无今日跟进计划</div>';
+
+  // 昨日已跟进
+  const yList = customers.filter(c=>c.date===yest);
+  document.getElementById('yesterday-contact').innerHTML = yList.length
+    ? yList.map(c=>`<div class="followup-item">
+        <div><div class="followup-name">${c.name}</div>
+        <div class="followup-sub">${c.product?'意向：'+c.product:''}${c.region?' · '+c.region:''}</div></div>
+        <button class="fu-btn done" onclick="openDetail(${c.id})">查看</button></div>`).join('')
+    : '<div class="empty">昨日无跟进记录</div>';
+
+  // 类型分布
+  const types=['国内客户','国际客户','区域客户','VIP','普通','新客户','沉睡'];
+  const tColors=['#1a73e8','#ea4335','#34a853','#d93025','#137333','#1565c0','#aaa'];
+  const max=customers.length||1;
+  document.getElementById('type-chart').innerHTML=types.map((t,i)=>{
+    const n=customers.filter(c=>c.type===t).length; if(!n) return '';
+    return `<div class="bar-row"><div class="bar-label">${t}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(n/max*100)}%;background:${tColors[i]}"></div></div><div class="bar-num">${n}</div></div>`;
+  }).join('');
+
+  // 地区分布
+  const reg={};
+  customers.forEach(c=>{if(c.region) reg[c.region]=(reg[c.region]||0)+1;});
+  const sorted=Object.entries(reg).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxR=sorted[0]?sorted[0][1]:1;
+  const rC=['#1a73e8','#34a853','#fbbc04','#ea4335','#9c27b0','#00acc1','#ff7043','#78909c'];
+  document.getElementById('region-chart').innerHTML=sorted.map(([r,n],i)=>
+    `<div class="bar-row"><div class="bar-label">${r}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${rC[i%8]}"></div></div><div class="bar-num">${n}</div></div>`
+  ).join('');
+}
+
+// ===== 地区筛选更新 =====
+function updateRegionFilter(){
+  const sel=document.getElementById('filter-region');
+  const cur=sel.value;
+  const all=[...new Set(customers.map(c=>c.region).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">全部地区</option>'+all.map(r=>`<option value="${r}"${r===cur?' selected':''}>${r}</option>`).join('');
+}
+
+// ===== 排序 =====
+function sortBy(key){ if(sortKey===key) sortDir*=-1; else{sortKey=key;sortDir=1;} currentPage=1; renderList(); }
+function resetPage(){ currentPage=1; }
+
+// ===== 搜索防抖 =====
+let searchTimer;
+function onSearch(){ clearTimeout(searchTimer); searchTimer=setTimeout(()=>{resetPage();renderList();},200); }
+
+// ===== 过滤数据 =====
+function getFiltered(){
+  const today=todayStr();
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const ft=document.getElementById('filter-type').value;
+  const fr=document.getElementById('filter-region').value;
+  const ff=document.getElementById('filter-followup').value;
+  return customers.filter(c=>{
+    const m=!q||[c.name,c.phone,c.company,c.product,c.email,c.region,c.note].some(v=>(v||'').toLowerCase().includes(q));
+    const mt=!ft||c.type===ft;
+    const mr=!fr||c.region===fr;
+    let mf=true;
+    if(ff==='today')   mf=c.followup===today;
+    if(ff==='overdue') mf=c.followup&&c.followup<today;
+    if(ff==='none')    mf=!c.followup;
+    return m&&mt&&mr&&mf;
+  });
+}
+
+// ===== 列表渲染（桌面+手机同时）=====
+function renderList(){
+  const today=todayStr();
+  let list=getFiltered();
+  if(sortKey){
+    list=[...list].sort((a,b)=>{
+      const av=a[sortKey]??'',bv=b[sortKey]??'';
+      return typeof av==='number'?(av-bv)*sortDir:String(av).localeCompare(String(bv))*sortDir;
+    });
+  }
+  const total=list.length;
+  const pages=Math.ceil(total/PAGE_SIZE)||1;
+  if(currentPage>pages) currentPage=1;
+  const slice=list.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+
+  // 桌面表格
+  const tbody=document.getElementById('table-body');
+  if(!slice.length){
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:30px;color:#bbb">暂无数据</td></tr>';
+    document.getElementById('cust-list').innerHTML='<div class="empty">暂无数据</div>';
+  } else {
+    tbody.innerHTML=slice.map((c,i)=>{
+      const overdue=c.followup&&c.followup<today;
+      const isToday=c.followup===today;
+      const fs=overdue?'color:#ea4335;font-weight:700':isToday?'color:#fbbc04;font-weight:700':'';
+      return `<tr>
+        <td>${(currentPage-1)*PAGE_SIZE+i+1}</td>
+        <td><b>${c.name}</b></td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.company||''}">${c.company||'-'}</td>
+        <td>${c.phone||'-'}</td><td>${c.region||'-'}</td>
+        <td><span class="tag ${tagClass[c.type]||'tag-normal'}">${c.type||'-'}</span></td>
+        <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.product||''}">${c.product||'-'}</td>
+        <td>¥${Number(c.amount||0).toLocaleString()}</td>
+        <td>${c.date||'-'}</td>
+        <td style="${fs}">${c.followup||'-'}${overdue?' ⚠':isToday?' 🔔':''}</td>
+        <td><div class="actions">
+          <button class="btn btn-primary btn-sm" onclick="openDetail(${c.id})">详情</button>
+          <button class="btn btn-success btn-sm" onclick="openEdit(${c.id})">编辑</button>
+          <button class="btn btn-danger btn-sm" onclick="delCustomer(${c.id})">删除</button>
+        </div></td></tr>`;
+    }).join('');
+
+    // 手机卡片
+    document.getElementById('cust-list').innerHTML=slice.map(c=>`
+      <div class="cust-card ${cardClass[c.type]||'domestic'}" onclick="openDetail(${c.id})">
+        <div class="cust-top">
+          <div class="cust-name">${c.name}</div>
+          <span class="tag ${tagClass[c.type]||'tag-normal'}">${c.type||'-'}</span>
+        </div>
+        <div class="cust-info">
+          <span>🏢 ${c.company||'-'}</span><br>
+          <span>📞 ${c.phone||'-'}</span> <span>📍 ${c.region||'-'}</span>
+          ${c.product?`<br><span>🛒 ${c.product}</span>`:''}
+          ${c.followup?`<br><span style="${c.followup<today?'color:#ea4335':c.followup===today?'color:#fbbc04':''}">📅 跟进：${c.followup}${c.followup<today?' ⚠':c.followup===today?' 🔔':''}</span>`:''}
+        </div>
+        <div class="cust-amount">¥${Number(c.amount||0).toLocaleString()}</div>
+        <div class="cust-btns" onclick="event.stopPropagation()">
+          <button class="btn btn-success btn-sm" onclick="window.location='tel:${c.phone}'">📞 拨打</button>
+          <button class="btn btn-primary btn-sm" onclick="openEdit(${c.id})">✏️ 编辑</button>
+          <button class="btn btn-danger btn-sm" onclick="delCustomer(${c.id})">🗑️ 删除</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // 分页
+  const pg=document.getElementById('pagination');
+  if(pages<=1){pg.innerHTML='';return;}
+  let html=`<span class="pg-info">共 ${total} 条，第 ${currentPage}/${pages} 页</span>`;
+  html+=`<button class="pg-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>上一页</button>`;
+  for(let p=1;p<=pages;p++){
+    if(pages>10&&p>3&&p<pages-2&&Math.abs(p-currentPage)>2){if(p===4||p===pages-3)html+='<span>…</span>';continue;}
+    html+=`<button class="pg-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  html+=`<button class="pg-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}>下一页</button>`;
+  pg.innerHTML=html;
+}
+function goPage(p){const pages=Math.ceil(getFiltered().length/PAGE_SIZE)||1;currentPage=Math.max(1,Math.min(p,pages));renderList();}
+
+// ===== 统计分析 =====
+function updateStats(){
+  const rC=['#1a73e8','#34a853','#fbbc04','#ea4335','#9c27b0','#00acc1','#ff7043','#78909c','#e91e63','#8bc34a'];
+  // TOP10
+  const top10=[...customers].sort((a,b)=>b.amount-a.amount).slice(0,10);
+  const maxA=top10[0]?top10[0].amount:1;
+  document.getElementById('amount-chart').innerHTML=top10.filter(c=>c.amount>0).map((c,i)=>
+    `<div class="bar-row"><div class="bar-label" title="${c.name}">${c.name}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(c.amount/maxA*100)}%;background:${rC[i%10]}"></div></div><div class="bar-num" style="width:52px;font-size:11px">¥${(c.amount/1000).toFixed(0)}k</div></div>`
+  ).join('')||'<div class="empty">暂无消费数据</div>';
+  // 时间分布
+  const now=new Date(),bk={'7天内':0,'30天内':0,'90天内':0,'半年内':0,'更早':0,'未记录':0};
+  customers.forEach(c=>{
+    if(!c.date){bk['未记录']++;return;}
+    const d=(now-new Date(c.date))/(86400000);
+    if(d<=7) bk['7天内']++;
+    else if(d<=30) bk['30天内']++;
+    else if(d<=90) bk['90天内']++;
+    else if(d<=180) bk['半年内']++;
+    else bk['更早']++;
+  });
+  const bC={'7天内':'#34a853','30天内':'#1a73e8','90天内':'#fbbc04','半年内':'#ff7043','更早':'#ea4335','未记录':'#bbb'};
+  const maxB=Math.max(...Object.values(bk))||1;
+  document.getElementById('date-chart').innerHTML=Object.entries(bk).map(([k,v])=>
+    `<div class="bar-row"><div class="bar-label">${k}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(v/maxB*100)}%;background:${bC[k]}"></div></div><div class="bar-num">${v}</div></div>`
+  ).join('');
+  // 类型占比
+  const types=['国内客户','国际客户','区域客户','VIP','普通','新客户','沉睡'];
+  const tC=['#1a73e8','#ea4335','#34a853','#d93025','#137333','#1565c0','#aaa'];
+  const tot=customers.length||1;
+  document.getElementById('pie-chart').innerHTML=types.map((t,i)=>{
+    const n=customers.filter(c=>c.type===t).length; if(!n) return '';
+    return `<div class="bar-row"><div class="bar-label">${t}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(n/tot*100)}%;background:${tC[i]}"></div></div><div class="bar-num">${Math.round(n/tot*100)}%(${n})</div></div>`;
+  }).join('');
+  // 完整地区
+  const reg={};customers.forEach(c=>{if(c.region) reg[c.region]=(reg[c.region]||0)+1;});
+  const sorted=Object.entries(reg).sort((a,b)=>b[1]-a[1]);
+  const maxR=sorted[0]?sorted[0][1]:1;
+  document.getElementById('full-region-chart').innerHTML=sorted.map(([r,n],i)=>
+    `<div class="bar-row"><div class="bar-label">${r}</div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${rC[i%10]}"></div></div><div class="bar-num">${n}</div></div>`
+  ).join('');
+}
+
+// ===== 详情弹窗 =====
+function openDetail(id){
+  const c=customers.find(x=>x.id===id); if(!c) return;
+  document.getElementById('detail-name').textContent=c.name;
+  const rows=[
+    ['公司',c.company||'-',''],['电话',c.phone||'-',''],
+    ['邮箱',c.email||'-','full'],['地区',c.region||'-',''],
+    ['类型',c.type||'-',''],['意向产品',c.product||'-',''],
+    ['消费额','¥'+Number(c.amount||0).toLocaleString(),''],
+    ['最近联系',c.date||'-',''],['下次跟进',c.followup||'-',''],
+    ['备注',c.note||'-','full']
+  ];
+  document.getElementById('detail-body').innerHTML=rows.map(([k,v,cls])=>
+    `<div class="detail-row${cls?' '+cls:''}"><div class="dk">${k}</div><div class="dv">${v}</div></div>`).join('');
+  document.getElementById('detail-edit-btn').onclick=()=>{closeDetail();openEdit(id);};
+  document.getElementById('modal-detail').classList.add('show');
+}
+function closeDetail(){ document.getElementById('modal-detail').classList.remove('show'); }
+
+// ===== 新增/编辑弹窗 =====
+function openAdd(){
+  editId=null;
+  document.getElementById('modal-title').textContent='新增客户';
+  ['name','company','phone','email','region','note','amount','product','followup'].forEach(f=>document.getElementById('f-'+f).value='');
+  document.getElementById('f-type').value='国内客户';
+  document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('modal-form').classList.add('show');
+}
+function openEdit(id){
+  const c=customers.find(x=>x.id===id); if(!c) return;
+  editId=id;
+  document.getElementById('modal-title').textContent='编辑客户';
+  document.getElementById('f-name').value=c.name;
+  document.getElementById('f-company').value=c.company||'';
+  document.getElementById('f-phone').value=c.phone||'';
+  document.getElementById('f-email').value=c.email||'';
+  document.getElementById('f-region').value=c.region||'';
+  document.getElementById('f-type').value=c.type||'国内客户';
+  document.getElementById('f-amount').value=c.amount||0;
+  document.getElementById('f-product').value=c.product||'';
+  document.getElementById('f-date').value=c.date||'';
+  document.getElementById('f-followup').value=c.followup||'';
+  document.getElementById('f-note').value=c.note||'';
+  document.getElementById('modal-form').classList.add('show');
+}
+function closeForm(){ document.getElementById('modal-form').classList.remove('show'); }
+
+function saveCustomer(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('姓名为必填项');return;}
+  const data={name,
+    phone:document.getElementById('f-phone').value.trim(),
+    company:document.getElementById('f-company').value.trim(),
+    email:document.getElementById('f-email').value.trim(),
+    region:document.getElementById('f-region').value.trim(),
+    type:document.getElementById('f-type').value,
+    amount:parseFloat(document.getElementById('f-amount').value)||0,
+    product:document.getElementById('f-product').value.trim(),
+    date:document.getElementById('f-date').value,
+    followup:document.getElementById('f-followup').value,
+    note:document.getElementById('f-note').value.trim()
+  };
+  if(editId){
+    const idx=customers.findIndex(c=>c.id===editId);
+    customers[idx]={...customers[idx],...data};
+  } else {
+    customers.push({id:nextId++,...data});
+  }
+  closeForm();
+  updateHome(); updateRegionFilter(); renderList();
+}
+
+function delCustomer(id){
+  if(!confirm('确认删除该客户？'))return;
+  customers=customers.filter(c=>c.id!==id);
+  updateHome(); updateRegionFilter(); renderList();
+}
+
+// ===== 导出 CSV =====
+function exportCSV(){
+  const h=['姓名','公司','电话','邮箱','地区','类型','意向产品','消费额','最近联系','下次跟进','备注'];
+  const rows=customers.map(c=>[c.name,c.company,c.phone,c.email,c.region,c.type,c.product,c.amount,c.date,c.followup,c.note].map(v=>`"${v||''}"`).join(','));
+  const csv='\uFEFF'+[h.join(','),...rows].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='客户数据_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// ===== 关弹窗 =====
+['modal-form','modal-detail'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('show');});
+});
+
+// ===== 窗口缩放时同步 FAB =====
+window.addEventListener('resize',()=>{
+  const isMobile=window.innerWidth<=768;
+  const listActive=document.getElementById('page-list').classList.contains('active');
+  document.getElementById('fab').style.display=(listActive&&isMobile)?'flex':'none';
+});
+
+updateHome();
+updateRegionFilter();
+</script>
+</body>
+</html>
